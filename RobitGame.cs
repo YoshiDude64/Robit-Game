@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using System.Runtime.InteropServices;
 using Robit_Game.Properties;
+using System.Security.Cryptography;
 
 namespace Robit_Game
 {
@@ -20,17 +21,18 @@ namespace Robit_Game
         bool IsBattle;
         int LevelUp;
         int Turn;
+        int Move;
         public RobitGame()
         {
             InitializeComponent();
             World = new OverWorld();
             Battle = new Battle();
             IsBattle = false;
+            BeginBattle(new int[] {6, 3, 3, 3});
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            AHPBar.SetState(3);
             PrintStory(World.UpdateStory());
         }
 
@@ -67,7 +69,7 @@ namespace Robit_Game
         {
             if (IsBattle)
             {
-                //Defend Function!
+                PrintStory(Battle.RunTurn(0, Turn, 0));//Runs the defend function.
                 Turn++;
                 UpdateBattle();
                 if (!IsBattle && LevelUp != 1)
@@ -88,6 +90,8 @@ namespace Robit_Game
                         Battle.Combatants[y].MaxHP += 2;
                         Battle.Combatants[y].HP = Battle.Combatants[y].MaxHP;
                     }
+                    UpdateBattle();
+                    UpdateButtons(World.FetchNeighbors());
                     LevelUp = 0;
                 }
                 else
@@ -95,22 +99,13 @@ namespace Robit_Game
                     Translate(0);
                 }
             }
-        }
+        }//Complete!
         private void EastButton_Click(object sender, EventArgs e)
         {
             if (IsBattle)
             {
-                //Attack!
-                Turn++;
-                UpdateBattle();
-                if (!IsBattle && LevelUp != 1)
-                {
-                    UpdateButtons(World.FetchNeighbors());
-                }
-                if (Turn == 3)
-                {
-                    RunEnemyTurns();
-                }
+                Move = 1;
+                PrintStory(new string[] { "Choose a target to attack." });
             }
             else
             {
@@ -118,8 +113,9 @@ namespace Robit_Game
                 {
                     Battle.MaxMP += 5;
                     Battle.MP = Battle.MaxMP;
-                    LevelUp = 0;
+                    UpdateBattle();
                     UpdateButtons(World.FetchNeighbors());
+                    LevelUp = 0;
                 }
                 else
                 {
@@ -131,9 +127,10 @@ namespace Robit_Game
         {
             if (IsBattle)
             {
-                //Flee!
+                PrintStory(Battle.Flee());//Flee!
                 Turn++;
                 UpdateBattle();
+                IsBattle = false;
                 if (!IsBattle&&LevelUp!=1)
                 {
                     UpdateButtons(World.FetchNeighbors());
@@ -150,7 +147,7 @@ namespace Robit_Game
                     Translate(2);
                 }
             }
-        }
+        }//Complete!
         private void button4_Click(object sender, EventArgs e)//WestButton
         {
             if (IsBattle)
@@ -180,6 +177,49 @@ namespace Robit_Game
                 }
             }
         }
+        private void RunPlayerTurn(int Target)
+        {
+            if (Target == -1 || Move == -1 || Turn > 2)
+            {
+                return;
+            }
+            if (Battle.Combatants[Turn].HP == 0)
+            {
+                Turn++;
+                return;
+            }
+            PrintStory(Battle.RunTurn(Move, Turn, Target));
+
+            Move = -1;
+            Target = -1;
+            UpdateBattle();
+            Turn++;
+            if (!IsBattle && LevelUp != 1)
+            {
+                UpdateButtons(World.FetchNeighbors());
+            }
+            if (Turn == 3)
+            {
+                RunEnemyTurns();
+            }
+        }
+        private void RunEnemyTurns()
+        {
+            Random RNG = new Random();
+            while (Turn<7)
+            {
+                if (Battle.Combatants[Turn].HP > 0)
+                {
+                    int Target = RNG.Next(0, 3);//Pick a player to target.
+                    Move = Battle.Combatants[Turn].ValidAttacks[RNG.Next(0, Battle.Combatants[Turn].ValidAttacks.Length)];//Picks a random attack from the list of attacks.
+                    PrintStory(Battle.RunTurn(Move, Turn, Target));
+                    UpdateBattle();
+                }
+                Turn++;
+            }
+            Move = -1;
+            Turn = 0;
+        }
         private void PrintStory(string[] phrases)
         {
             for(int x=phrases.Length-1;x>=0;x--)
@@ -197,6 +237,13 @@ namespace Robit_Game
             LoreBox.Items.Insert(0, World.PrintDescription());
             UpdateButtons(World.FetchNeighbors());
         }
+        private void BeginBattle(int[] IDs)
+        {
+            IsBattle = true;
+            Battle.BeginBattle(IDs);
+            Battle.Combatants[3].Tattled = true; //DEBUG LINE!
+            UpdateBattle();
+        }
         private void UpdateBattle()
         {
             int[] HPs = Battle.FetchHPs();
@@ -207,9 +254,8 @@ namespace Robit_Game
             UpdateNames(Battle.FetchNames());
             UpdateHPBars(Battle.FetchMaxHPs(), Battle.FetchHPs());
             UpdateMPBar(Battle.MaxMP, Battle.MP);
-            HPs = Battle.FetchHPs();
+            HPs = Battle.FetchRealHPs();
             AlliesHP = 0;
-            EnemiesHP = 0;
             for (x = 0; x < 3; x++)
             {
                 AlliesHP += HPs[x];
@@ -219,6 +265,7 @@ namespace Robit_Game
                 Battle.GameOver();
                 IsBattle = false;
             }
+            EnemiesHP = 0;
             for (x=3;x<7;x++)
             {
                 EnemiesHP += HPs[x];
@@ -228,11 +275,12 @@ namespace Robit_Game
                 PrintStory(Battle.EndBattle());
                 IsBattle = false;
                 Turn = 0;
-                if (Battle.EXP > Battle.Combatants[0].Level)
+                if (Battle.EXP/100 > Battle.Combatants[0].Level)
                 {
                     PrintStory(new string[] { "Level up!", "Pick a stat to improve." });
                     UpdateButtons(new string[] { "+2 Max HP each", "+5 Max MP", " ", "+3 Max BP" });
                     LevelUp = 1;
+                    Battle.Combatants[0].Level++;
                     for(int y = 0;y<3;y++)
                     {
                         Battle.Combatants[y].HP = Battle.Combatants[y].MaxHP;
@@ -240,50 +288,42 @@ namespace Robit_Game
                     }
                 }
             }
-        }
-        private void RunEnemyTurns()
-        {
-
+            if(Turn>=7)
+            {
+                Turn = 0;
+            }
+            while (Battle.Combatants[Turn].HP == 0)//Skip dead characters' turns.
+            {
+                Turn++;
+                if(Turn>=7)
+                {
+                    Turn = 0;
+                }
+            }
         }
         private void UpdateHPBars(int[] MaxHPs, int[] HPs)
         {
-            int[] BarStates = new int[7];
-            for (int x=0;x<7;x++)
-            {
-                if(HPs[x] * 10 / MaxHPs[x]<=2)
-                {
-                    BarStates[x] = 2;
-                }
-                else if (HPs[x] * 10 / MaxHPs[x]>=5)
-                {
-                    BarStates[x] = 1;
-                }
-                else
-                {
-                    BarStates[x] = 3;
-                }
-            }
             AHPBar.Maximum = MaxHPs[0];
             AHPBar.Value = HPs[0];
-            AHPBar.SetState(BarStates[0]);
+
             KHPBar.Maximum = MaxHPs[1];
             KHPBar.Value = HPs[1];
-            KHPBar.SetState(BarStates[1]);
+
             SHPBar.Maximum = MaxHPs[2];
             SHPBar.Value = HPs[2];
-            SHPBar.SetState(BarStates[2]);
+
             E1HPBar.Maximum = MaxHPs[3];
             E1HPBar.Value = HPs[3];
-            E1HPBar.SetState(BarStates[3]);
+            
             E2HPBar.Maximum = MaxHPs[4];
             E2HPBar.Value = HPs[4];
-            E2HPBar.SetState(BarStates[4]);
+
             E3HPBar.Maximum = MaxHPs[5];
             E3HPBar.Value = HPs[5];
-            E3HPBar.SetState(BarStates[5]);
+
             E4HPBar.Maximum = MaxHPs[6];
             E4HPBar.Value = HPs[6];
-            E4HPBar.SetState(BarStates[6]);
+
         }
         private void UpdateNames(string[] names)
         {
@@ -310,31 +350,31 @@ namespace Robit_Game
         }
         private void AButton_Click(object sender, EventArgs e)
         {
-
+            RunPlayerTurn(0);
         }
         private void KButton_Click(object sender, EventArgs e)
         {
-
+            RunPlayerTurn(1);
         }
         private void SButton_Click(object sender, EventArgs e)
         {
-
+            RunPlayerTurn(2);
         }
         private void E1Button_Click(object sender, EventArgs e)
         {
-
+            RunPlayerTurn(3);
         }
         private void E2Button_Click(object sender, EventArgs e)
         {
-
+            RunPlayerTurn(4);
         }
         private void E3Button_Click(object sender, EventArgs e)
         {
-
+            RunPlayerTurn(5);
         }
         private void E4Button_Click(object sender, EventArgs e)
         {
-
+            RunPlayerTurn(6);
         }
         private void AHPBar_Click(object sender, EventArgs e)
         {
@@ -368,14 +408,5 @@ namespace Robit_Game
         {
             
         }
-    }
-}
-public static class ModifyProgressBarColor//Borrowed from a stack overflow user (There is no built-in way to change progressbar color without ruining the entire form's style) https://stackoverflow.com/questions/778678/how-to-change-the-color-of-progressbar-in-c-sharp-net-3-5
-{
-    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = false)]
-    static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr w, IntPtr l);
-    public static void SetState(this System.Windows.Forms.ProgressBar pBar, int state)
-    {
-        SendMessage(pBar.Handle, 1040, (IntPtr)state, IntPtr.Zero);
     }
 }
