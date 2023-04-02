@@ -28,7 +28,7 @@ namespace Robit_Game
             World = new OverWorld();
             Battle = new Battle();
             IsBattle = false;
-            BeginBattle(new int[] {6, 3, 3, 3});
+            BeginBattle(new int[] {14, 3, 3, 3});
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -183,11 +183,18 @@ namespace Robit_Game
             {
                 return;
             }
-            if (Battle.Combatants[Turn].HP == 0)
+            for (int x = 0; x < 2; x++)//This block of code may need to run twice, if both Abel and K-813 are dead. This will not need to be done a third time, as if this is the case, it is already game over.
             {
-                Turn++;
-                return;
+                if (Battle.Combatants[Turn].HP == 0)
+                {
+                    Turn++;
+                    if (Turn == 3)
+                    {
+                        return;
+                    }
+                }
             }
+            
             PrintStory(Battle.RunTurn(Move, Turn, Target));
 
             Move = -1;
@@ -206,11 +213,15 @@ namespace Robit_Game
         private void RunEnemyTurns()
         {
             Random RNG = new Random();
+            int Target;
             while (Turn<7)
             {
                 if (Battle.Combatants[Turn].HP > 0)
                 {
-                    int Target = RNG.Next(0, 3);//Pick a player to target.
+                    do
+                    {
+                        Target = RNG.Next(0, 3);
+                    } while (Battle.Combatants[Target].HP <= 0);
                     Move = Battle.Combatants[Turn].ValidAttacks[RNG.Next(0, Battle.Combatants[Turn].ValidAttacks.Length)];//Picks a random attack from the list of attacks.
                     PrintStory(Battle.RunTurn(Move, Turn, Target));
                     UpdateBattle();
