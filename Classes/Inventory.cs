@@ -19,6 +19,7 @@ namespace Robit_Game.Classes
         public int[] ItemIDs;
         public Item[] ItemPrototypes;
         Dictionary <int, string> CharacterNames = new Dictionary <int, string>();
+        int InvType = 0;
         enum InvMode { Items, Abilities, Badges }
         public Inventory(Battle NewBattle)
         {
@@ -58,6 +59,7 @@ namespace Robit_Game.Classes
         public string[] GetInventory(int type)
         {
             List <string> Entries = new List<string> { };
+            InvType = type;
             switch (type)
             {
                 case (int)InvMode.Items:
@@ -67,7 +69,7 @@ namespace Robit_Game.Classes
                     //add all ability names to Abilities
                     break;
                 case (int)InvMode.Badges:
-                    //Badges.OrderBy(Badges => Badges.ID);
+                    Badges = Badges.OrderBy(Badges => Badges.Name).ToList();
                     for (int x = 0; x < Badges.Count; x++)
                     {
                         Entries.Add($"{Badges[x].Name} - {Badges[x].BPCost} BP - {CharacterNames[Badges[x].EquippedToCharacter]}");
@@ -76,6 +78,19 @@ namespace Robit_Game.Classes
             }
             return Entries.ToArray();
         }
+        public string[] PrintDescription(int ListIndex)
+        {
+            switch (InvType)
+            {
+                case (int)InvMode.Items:
+                    return null;//CHANGE LATER
+                case (int)InvMode.Abilities:
+                    return null;//CHANGE LATER
+                case (int)InvMode.Badges:
+                    return Badges[ListIndex].Description.ToArray();
+            }
+            return null;//ERROR!
+        }
     }
     public class Badge
     {
@@ -83,7 +98,7 @@ namespace Robit_Game.Classes
 
         public int EquippedToCharacter = -1;
         public string Name = string.Empty;
-        public string Description = string.Empty;
+        public List<string> Description = new List<string> { };
         public int BPCost;
         public Battle Battle;
         public Inventory Inventory;
@@ -145,7 +160,7 @@ namespace Robit_Game.Classes
         public OPAmplifier(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
         {
             Name = "Offensive Power Amplifier";
-            Description = "Increases base attack by one for the equipped character.";
+            Description.Add("Increases base attack by one for the equipped character.");
             BPCost = 6;
             ID = 0;
         }
@@ -163,7 +178,7 @@ namespace Robit_Game.Classes
         public DPAmplifier(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
         {
             Name = "Defensive Power Amplifier";
-            Description = "Increases base defense by one for the equipped character.";
+            Description.Add("Increases base defense by one for the equipped character.");
             BPCost = 5;
             ID = 1;
         }
@@ -181,7 +196,7 @@ namespace Robit_Game.Classes
         public BackupBattery(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
         {
             Name = "Backup Battery";
-            Description = "Stores an additional 5MP at the cost of 3BP.";
+            Description.Add("Stores an additional 5MP at the cost of 3BP.");
             BPCost = 3;
             ID = 2;
         }
@@ -200,7 +215,7 @@ namespace Robit_Game.Classes
         public ThickenedPlating(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
         {
             Name = "Thickened Plating";
-            Description = "Increases the max HP of a robot by 4, at the cost of 2 BP.";
+            Description.Add("Increases the max HP of a robot by 4, at the cost of 2 BP.");
             BPCost = 2;
             ID = 3;
         }
@@ -219,7 +234,7 @@ namespace Robit_Game.Classes
         public OPDiverter(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
         {
             Name = "Offensive Power Diverter";
-            Description = "Trade away one defense for one attack.";
+            Description.Add("Trade away one defense for one attack.");
             BPCost = 3;
             ID = 4;
         }
@@ -239,7 +254,7 @@ namespace Robit_Game.Classes
         public DPDiverter(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
         {
             Name = "Defensive Power Diverter";
-            Description = "Trade away one attack for one defense.";
+            Description.Add("Trade away one attack for one defense.");
             BPCost = 2;
             ID = 5;
         }

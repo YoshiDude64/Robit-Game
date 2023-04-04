@@ -331,7 +331,7 @@
             this.DescriptionBox.Name = "DescriptionBox";
             this.DescriptionBox.Size = new System.Drawing.Size(601, 64);
             this.DescriptionBox.TabIndex = 30;
-            this.DescriptionBox.SelectedIndexChanged += new System.EventHandler(this.listBox3_SelectedIndexChanged);
+            this.DescriptionBox.SelectedIndexChanged += new System.EventHandler(this.DescriptionBox_SelectedIndexChanged);
             // 
             // MPLabel
             // 

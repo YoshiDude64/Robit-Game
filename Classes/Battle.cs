@@ -15,6 +15,7 @@ namespace Robit_Game.Properties
         public int MP;
         public int MaxMP;
         public int EXP;
+        public int ZeroDay;
         public Battle()
         {
             Combatants = new Robit[7];
@@ -113,7 +114,10 @@ namespace Robit_Game.Properties
             int start, stop;
             string TargetTeam;
             Random RNG = new Random();
-
+            foreach (Robit x in Combatants)
+            {
+                x.Defense = Math.Max(x.Defense, 0);//Cannot have negative defense.
+            }
             if (target >= 3)//Sets up group attack iterators for attacks against enemies.
             {
                 TargetTeam = "enemies";

@@ -48,9 +48,9 @@ namespace Robit_Game
         {
 
         }
-        private void listBox3_SelectedIndexChanged(object sender, EventArgs e)
+        private void DescriptionBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-
+            DescriptionBox.ClearSelected();
         }
         private void label3_Click(object sender, EventArgs e)
         {
@@ -59,7 +59,12 @@ namespace Robit_Game
 
         private void InventoryBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-
+            string[] Description = Inventory.PrintDescription(InventoryBox.SelectedIndex);
+            DescriptionBox.Items.Clear();
+            foreach (string x in Description)
+            {
+                DescriptionBox.Items.Add(x);
+            }
         }
         public void AddLoreBox(string phrase)
         {
@@ -67,7 +72,7 @@ namespace Robit_Game
         }
         public void LoreBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-
+            LoreBox.ClearSelected();
         }
         private void NorthButton_Click(object sender, EventArgs e)
         {
@@ -250,7 +255,7 @@ namespace Robit_Game
         {
             string[] Items = Inventory.GetInventory(InvMode);
             InventoryBox.Items.Clear();
-            for (int x = Items.Length - 1; x >= 0; x--)
+            for (int x = 0; x <  Items.Length; x++)
             {
                 InventoryBox.Items.Add(Items[x]);
             }
