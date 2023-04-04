@@ -35,7 +35,7 @@ namespace Robit_Game
             BeginBattle(new int[] {14, 3, 3, 3});
             for (int z = 0; z < 5; z++)//DEBUG LOOP! DO NOT KEEP
             {
-                Inventory.Badges.Append(Inventory.BadgePrototypes[z]);
+                Inventory.Badges.Add(Inventory.BadgePrototypes[z]);
             }
         }
 

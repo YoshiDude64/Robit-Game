@@ -108,7 +108,7 @@ namespace Robit_Game.Properties
         }
         public string[] RunTurn(int move, int caster, int target)//returns strings to be printed to the LoreBox.
         {
-            string[] Log = new string[] { "" };//temporary assignment so the log is at least one string long.
+            List<string> Log = new List<string> { "" };//temporary assignment so the log is at least one string long.
             int Damage = Combatants[caster].Attack + Combatants[caster].Charge;//Tinker with this line for badges
             int start, stop;
             string TargetTeam;
@@ -153,7 +153,7 @@ namespace Robit_Game.Properties
                         Damage = Damage - Convert.ToInt32(Combatants[target].Defending);
                         Damage = Math.Max(Damage, 0);//Prevents defending opponents from healing 1 HP.
                         Combatants[x].HP -= Damage;//May produce negative values. This issue is solved outside the switch.
-                        Log.Append(Combatants[x].Name + " was burned for " + Damage + " damage.");
+                        Log.Add(Combatants[x].Name + " was burned for " + Damage + " damage.");
                     }
                     break;
                 case 5://Torch (Single burn) (Penetrates normal defense, but defensive stance will still reduce damage taken by 1)
@@ -168,12 +168,12 @@ namespace Robit_Game.Properties
                     {
                         if (Combatants[x].Defending)
                         {
-                            Log.Append(Combatants[x].Name + " evaded the magnet!");
+                            Log.Add(Combatants[x].Name + " evaded the magnet!");
                         }
                         else
                         {
                             Combatants[x].HP -= Damage;
-                            Log.Append(Combatants[x].Name + " was magnetized for " + Damage);
+                            Log.Add(Combatants[x].Name + " was magnetized for " + Damage);
                         }
                     }
                     break;
@@ -194,7 +194,7 @@ namespace Robit_Game.Properties
                     for(int x=0;x<3;x++)//Strikes 3 times. If attack is 3, then deal {3, 2, 1} = 6 damage. If attack is 1, deal {1, 1, 1) = 3 damage. Basically, it's Vi's hurricaine toss.
                     {
                         Damage = Math.Max(Damage, 1);//deal at least one damage per hit.
-                        Log.Append("Hit " + x + ": " + Damage + " Damage!");
+                        Log.Add("Hit " + x + ": " + Damage + " Damage!");
                         Combatants[target].HP -= Damage;
                         Damage--;
                     }
@@ -204,7 +204,7 @@ namespace Robit_Game.Properties
                     for(int x=0;x<4;x++)//Strikes 4 times. If attack is 3, then deal {3, 2, 1, 0} = 6 damage. If attack is 1, deal {1, 0, 0, 0} = 1 damage.
                     {
                         Damage = Math.Max(Damage, 0);//never heal on hit.
-                        Log.Append("Hit " + x + ": " + Damage + " Damage!");
+                        Log.Add("Hit " + x + ": " + Damage + " Damage!");
                         Combatants[target].HP -= Damage;
                         Damage--;
                     }
@@ -223,14 +223,14 @@ namespace Robit_Game.Properties
                             if (Combatants[x].HP == 0)
                             {
                                 Combatants[x] = RobitPrototypes[Combatants[caster].Summon];
-                                Log.Append(Combatants[x].Name + "appeared!");
+                                Log.Add(Combatants[x].Name + "appeared!");
                                 break;
                             }
                         }
                     }
                     else
                     {
-                        Log.Append("...But nobody came");
+                        Log.Add("...But nobody came");
                     }
                     break;
             }
@@ -241,12 +241,12 @@ namespace Robit_Game.Properties
                     Combatants[x].HP = 0;//Keeps enemies and allies from having negative HP, which may cause errors.
                 }
             }
-            if(move!=7&&move!=10)//Resets charge after an attack, unless charge was used. Charge can build up infinitely, but takes one turn each time.
+            if (move != 7 && move != 10 && Combatants[caster].Charge>0)//Resets charge after an attack, unless charge was used. Charge can build up infinitely, but takes one turn each time.
             {
-                Log.Append(Combatants[caster].Name + "discharged!");
+                Log.Add(Combatants[caster].Name + " discharged!");
                 Combatants[caster].Charge = 0;
             }
-            return Log;
+            return Log.ToArray();
         }
         public string[] Flee()
         {
@@ -281,7 +281,7 @@ namespace Robit_Game.Properties
         {
 
         }
-        public string[] Tattle(int caster, int target)//returns text for the LoreBox to write, marks enemies as tattled. Tattled enemies display thier max HP and HP.
+        public List<string> Tattle(int caster, int target)//returns text for the LoreBox to write, marks enemies as tattled. Tattled enemies display thier max HP and HP.
         {
             for (int x = 3; x < 7; x++)
             {
@@ -291,7 +291,7 @@ namespace Robit_Game.Properties
                 }
             }
             RobitPrototypes[target].Tattled = true;//Marks the enemy prototype as tattled, so that when they are encountered again, they do not need to be tattled again.
-            string[] Tattle = new string[] { Combatants[caster].Name + ": \"That's "  + Combatants[target].Name + ". Max HP is " + Combatants[target].MaxHP + ", Attack is " + Combatants[target].Attack + ", Defense is " + Combatants[target].Defense + ".\"" };
+            List<string> Tattle = new List<string> { Combatants[caster].Name + ": \"That's "  + Combatants[target].Name + ". Max HP is " + Combatants[target].MaxHP + ", Attack is " + Combatants[target].Attack + ", Defense is " + Combatants[target].Defense + ".\"" };
             for (int x = 0; x < Combatants[target].TattleLog.Length; x++)
             {
                 Tattle.Append(Combatants[caster].Name + ": \"" + Combatants[target].TattleLog[x] + "\"");

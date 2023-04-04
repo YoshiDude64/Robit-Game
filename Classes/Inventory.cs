@@ -57,7 +57,7 @@ namespace Robit_Game.Classes
         }
         public string[] GetInventory(int type)
         {
-            string[] Entries = new string[0];
+            List <string> Entries = new List<string> { };
             switch (type)
             {
                 case (int)InvMode.Items:
@@ -70,11 +70,11 @@ namespace Robit_Game.Classes
                     //Badges.OrderBy(Badges => Badges.ID);
                     for (int x = 0; x < Badges.Count; x++)
                     {
-                        Entries.Append($"{Badges[x].Name} - {Badges[x].BPCost} BP - {CharacterNames[Badges[x].EquippedToCharacter]}");
+                        Entries.Add($"{Badges[x].Name} - {Badges[x].BPCost} BP - {CharacterNames[Badges[x].EquippedToCharacter]}");
                     }
                     break;
             }
-            return Entries;
+            return Entries.ToArray();
         }
     }
     public class Badge
