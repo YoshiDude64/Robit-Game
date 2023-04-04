@@ -88,7 +88,7 @@ namespace Robit_Game.Properties
             string[] Names = new string[7];
             for(int x=0;x<7;x++)
             {
-                if (Combatants[x].HP <= 0)
+                if (Combatants[x].HP <= 0 && x>2)
                 {
                     Names[x] = " ";
                 }

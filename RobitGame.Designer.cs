@@ -75,6 +75,7 @@
             this.button1.TabIndex = 3;
             this.button1.Text = "Items";
             this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
             // button2
             // 
@@ -85,7 +86,7 @@
             this.button2.TabIndex = 4;
             this.button2.Text = "Badges";
             this.button2.UseVisualStyleBackColor = true;
-            this.button2.Click += new System.EventHandler(this.button2_Click);
+            this.button2.Click += new System.EventHandler(this.BadgeButton_Click);
             // 
             // SouthButton
             // 
@@ -107,7 +108,7 @@
             this.WestButton.TabIndex = 6;
             this.WestButton.Text = "West";
             this.WestButton.UseVisualStyleBackColor = true;
-            this.WestButton.Click += new System.EventHandler(this.button4_Click);
+            this.WestButton.Click += new System.EventHandler(this.WestButton_Click);
             // 
             // EastButton
             // 
@@ -190,7 +191,7 @@
             this.KHPBar.Step = 1;
             this.KHPBar.TabIndex = 13;
             this.KHPBar.Value = 100;
-            this.KHPBar.Click += new System.EventHandler(this.progressBar4_Click);
+            this.KHPBar.Click += new System.EventHandler(this.KHPBar_Click);
             // 
             // PictureBox
             // 
@@ -287,7 +288,7 @@
             this.E1HPBar.Step = 1;
             this.E1HPBar.TabIndex = 26;
             this.E1HPBar.Value = 100;
-            this.E1HPBar.Click += new System.EventHandler(this.progressBar5_Click);
+            this.E1HPBar.Click += new System.EventHandler(this.E1HPBar_Click);
             // 
             // E4HPBar
             // 

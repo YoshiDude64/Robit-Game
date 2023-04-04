@@ -11,6 +11,7 @@ using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using System.Runtime.InteropServices;
 using Robit_Game.Properties;
 using System.Security.Cryptography;
+using Robit_Game.Classes;
 
 namespace Robit_Game
 {
@@ -18,17 +19,24 @@ namespace Robit_Game
     {
         OverWorld World;
         Battle Battle;
+        Inventory Inventory;
         bool IsBattle;
         int LevelUp;
         int Turn;
-        int Move;
+        new int Move;
+        enum InvMode { Items, Abilities, Badges };
         public RobitGame()
         {
             InitializeComponent();
             World = new OverWorld();
             Battle = new Battle();
+            Inventory = new Inventory(Battle);
             IsBattle = false;
             BeginBattle(new int[] {14, 3, 3, 3});
+            for (int z = 0; z < 5; z++)//DEBUG LOOP! DO NOT KEEP
+            {
+                Inventory.Badges.Append(Inventory.BadgePrototypes[z]);
+            }
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -45,10 +53,6 @@ namespace Robit_Game
 
         }
         private void label3_Click(object sender, EventArgs e)
-        {
-
-        }
-        private void button2_Click(object sender, EventArgs e)
         {
 
         }
@@ -148,21 +152,13 @@ namespace Robit_Game
                 }
             }
         }//Complete!
-        private void button4_Click(object sender, EventArgs e)//WestButton
+        private void WestButton_Click(object sender, EventArgs e)
         {
             if (IsBattle)
             {
                 //Ability!
-                Turn++;
-                UpdateBattle();
-                if (!IsBattle && LevelUp != 1)
-                {
-                    UpdateButtons(World.FetchNeighbors());
-                }
-                if (Turn==3)
-                {
-                    RunEnemyTurns();
-                }
+                UpdateInventory((int)InvMode.Abilities);
+                PrintStory(new string[] { "Choose an ability." });
             }
             else
             {
@@ -176,6 +172,14 @@ namespace Robit_Game
                     Translate(3);
                 }
             }
+        }
+        private void BadgeButton_Click(object sender, EventArgs e)
+        {
+            UpdateInventory((int)InvMode.Badges);
+        }
+        private void button1_Click(object sender, EventArgs e)
+        {
+            UpdateInventory((int)InvMode.Badges);
         }
         private void RunPlayerTurn(int Target)
         {
@@ -230,12 +234,25 @@ namespace Robit_Game
             }
             Move = -1;
             Turn = 0;
+            while (Battle.Combatants[Turn].HP <= 0)
+            {
+                Turn++;
+            }
         }
         private void PrintStory(string[] phrases)
         {
             for(int x=phrases.Length-1;x>=0;x--)
             {
                 LoreBox.Items.Insert(0, phrases[x]);
+            }
+        }
+        private void UpdateInventory(int InvMode)
+        {
+            string[] Items = Inventory.GetInventory(InvMode);
+            InventoryBox.Items.Clear();
+            for (int x = Items.Length - 1; x >= 0; x--)
+            {
+                InventoryBox.Items.Add(Items[x]);
             }
         }
         private void Translate(int Direction)
@@ -391,18 +408,18 @@ namespace Robit_Game
         {
 
         }
-        private void progressBar4_Click(object sender, EventArgs e)
+        private void KHPBar_Click(object sender, EventArgs e)
         {
 
-        }//KHPBar
+        }
         private void SHPBar_Click(object sender, EventArgs e)
         {
 
         }
-        private void progressBar5_Click(object sender, EventArgs e)
+        private void E1HPBar_Click(object sender, EventArgs e)
         {
 
-        }//E1HPBar
+        }
         private void E2HPBar_Click(object sender, EventArgs e)
         {
 
