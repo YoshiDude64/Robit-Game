@@ -11,15 +11,17 @@ namespace Robit_Game.Properties
     public class Battle
     {
         public Robit[] Combatants;
-        Robit[] RobitPrototypes;
+        public Robit[] RobitPrototypes;
         public int MP;
         public int MaxMP;
         public int EXP;
         public int ZeroDay;
+        public enum Moves { Defend, BasicAttack, Tattle, Reconstruct, HeatWave, Torch, Magneto, Charge, BlazingCombo, LightningCombo, HardCharge, Summon };
+        public enum StatusEffects { Glitched, Melted, Rusted, ExtraTurn, HPRegen, MPRegen, AtkBonus, AtkPenalty, DefBonus, DefPenalty};
         public Battle()
         {
             Combatants = new Robit[7];
-            RobitPrototypes = new Robit[17];
+            RobitPrototypes = new Robit[16];
             EXP = 0;
             InitializePrototypes();
             for (int x=0;x<3;x++)
@@ -111,9 +113,18 @@ namespace Robit_Game.Properties
         {
             List<string> Log = new List<string> { "" };//temporary assignment so the log is at least one string long.
             int Damage = Combatants[caster].Attack + Combatants[caster].Charge;//Tinker with this line for badges
+            int Defense = Combatants[caster].Defense;
             int start, stop;
             string TargetTeam;
             Random RNG = new Random();
+            if (Combatants[target].StatusEffects[(int)StatusEffects.DefPenalty] > 0)
+                Defense--;
+            if (Combatants[target].StatusEffects[(int)StatusEffects.DefBonus] > 0)
+                Defense++;
+            if (Combatants[caster].StatusEffects[(int)StatusEffects.AtkPenalty] > 0)
+                Damage--;
+            if (Combatants[caster].StatusEffects[(int)StatusEffects.AtkPenalty] > 0)
+                Damage++;
             foreach (Robit x in Combatants)
             {
                 x.Defense = Math.Max(x.Defense, 0);//Cannot have negative defense.
@@ -132,41 +143,41 @@ namespace Robit_Game.Properties
             }
             switch (move)
             {
-                case 0://Defend
+                case (int)Moves.Defend://Defend
                     Combatants[caster].Defending = true;
                     Log[0] = Combatants[caster].Name + " defends.";
                     break;
-                case 1://Basic attack
-                    Damage = Damage - Combatants[target].Defense - Convert.ToInt32(Combatants[target].Defending);
+                case (int)Moves.BasicAttack://Basic attack
+                    Damage = Damage - Defense - Convert.ToInt32(Combatants[target].Defending);
                     Damage = Math.Max(Damage, 0);//keeps enemies with high defense from being healed by attacks.
                     Combatants[target].HP -= Damage;
                     Log[0] = Combatants[caster].Name + " hits " + Combatants[target].Name + " for " + Damage + " Damage.";
                     break;
-                case 2://Tattle
+                case (int)Moves.Tattle://Tattle
                     Log = Tattle(caster, target);
                     break;
-                case 3://Reconstruct
+                case (int)Moves.Reconstruct://Reconstruct
                     int Healed = Combatants[target].HP - Math.Min(Combatants[target].HP + 10, Combatants[target].MaxHP);
                     Combatants[target].HP += Healed;
                     Log[0] = Combatants[caster].Name + " healed " + Combatants[target].Name + " for " + Healed + " HP.";
                     break;
-                case 4://Heat wave (Group burn) (penetrates normal defense, but a defensive stance will still reduce damage taken by 1)
+                case (int)Moves.HeatWave://Heat wave (Group burn) (penetrates normal defense, but a defensive stance will still reduce damage taken by 1)
                     Log[0] = Combatants[caster].Name + " uses \"Heat Wave\" on all " + TargetTeam + "!";
                     for (int x = start; x < stop; x++)
                     {
-                        Damage = Damage - Convert.ToInt32(Combatants[target].Defending);
+                        Damage -= Convert.ToInt32(Combatants[target].Defending);
                         Damage = Math.Max(Damage, 0);//Prevents defending opponents from healing 1 HP.
                         Combatants[x].HP -= Damage;//May produce negative values. This issue is solved outside the switch.
                         Log.Add(Combatants[x].Name + " was burned for " + Damage + " damage.");
                     }
                     break;
-                case 5://Torch (Single burn) (Penetrates normal defense, but defensive stance will still reduce damage taken by 1)
-                    Damage = Damage - Convert.ToInt32(Combatants[target].Defending);
+                case (int)Moves.Torch://Torch (Single burn) (Penetrates normal defense, but defensive stance will still reduce damage taken by 1)
+                    Damage -= Convert.ToInt32(Combatants[target].Defending);
                     Damage = Math.Max(Damage, 0);
                     Combatants[target].HP -= Damage;
                     Log[0] = Combatants[caster].Name + " torches " + Combatants[target].Name + " for " + Damage + " damage.";
                     break;
-                case 6://Magneto (Group. Ignores defense, but deals zero damage , only used by Frix.)
+                case (int)Moves.Magneto://Magneto (Group. Ignores defense, but deals zero damage , only used by Frix.)
                     Log[0] = Combatants[caster].Name + " activates the electromagnet.";
                     for(int x = start; x < stop; x++)
                     {
@@ -176,21 +187,29 @@ namespace Robit_Game.Properties
                         }
                         else
                         {
+                            Damage -= Defense;
                             Combatants[x].HP -= Damage;
                             Log.Add(Combatants[x].Name + " was magnetized for " + Damage);
+                            if (RNG.Next(1, 100) > 50)//50% change to inflict glitched
+                            {
+                                Combatants[x].StatusEffects[(int)StatusEffects.Glitched] += 1;
+                                Log.Add($"{Combatants[x].Name} is glitched for 1 turn!");
+                            }
                         }
                     }
                     break;
-                case 7://charge. Makes attacks deal +1 damage. Max of 3 charge.
+                case (int)Moves.Charge://charge. Makes attacks deal +1 damage. Max of 3 charge.
                     Combatants[caster].Charge += 1;
                     if (Combatants[caster].Charge>3)
                     {
                         Combatants[caster].Charge = 3;//If overcharged, set back to 3.
+                        Log.Add($"{Combatants[caster].Name} was overcharged. Charge level limited to 3.");
                     }
                     Log[0] = Combatants[caster].Name + " charged up. (Total charge: " + Combatants[caster].Charge + ")";
                     break;
-                case 8://Blazing Combo
+                case (int)Moves.BlazingCombo://Blazing Combo
                     Log[0] = Combatants[caster].Name + " begins a BLAZING COMBO!";
+                    Damage -= Defense;
                     if(Damage<1)//Does zero damage total if first hit would deal less than one damage without the max function.
                     {
                         break;
@@ -203,8 +222,9 @@ namespace Robit_Game.Properties
                         Damage--;
                     }
                     break;
-                case 9://Lightning Combo (Weaker than blazing combo for attack 1 and 2. Equal in power at 3 attack. Stronger with 4+ attack.)
+                case (int)Moves.LightningCombo://Lightning Combo (Weaker than blazing combo for attack 1 and 2. Equal in power at 3 attack. Stronger with 4+ attack.)
                     Log[0] = Combatants[caster].Name + " begins a LIGHTNING COMBO!";
+                    Damage -= Defense;
                     for(int x=0;x<4;x++)//Strikes 4 times. If attack is 3, then deal {3, 2, 1, 0} = 6 damage. If attack is 1, deal {1, 0, 0, 0} = 1 damage.
                     {
                         Damage = Math.Max(Damage, 0);//never heal on hit.
@@ -213,14 +233,14 @@ namespace Robit_Game.Properties
                         Damage--;
                     }
                     break;
-                case 10://hard charge. Costs 5 HP to get 3 charge (ouch!)
+                case (int)Moves.HardCharge://hard charge. Costs 5 HP to get 3 charge (ouch!)
                     Log[0] = Combatants[caster].Name + " hard charges! (Charge = 3)";
                     Combatants[caster].HP -= 5;
-                    Combatants[caster].Charge += 3;
+                    Combatants[caster].Charge = 3;
                     break;
-                case 11://summon. Enemy needs unique data for a summon.
+                case (int)Moves.Summon://summon. Enemy needs unique data for a summon.
                     Log[0] = Combatants[caster].Name + " calls for help!";
-                    if(RNG.Next(1, 100)>30)//30% change of summoning ally.
+                    if(RNG.Next(1, 100)>50)//50% chance of summoning ally.
                     {
                         for(int x=3;x<7;x++)
                         {
@@ -238,19 +258,36 @@ namespace Robit_Game.Properties
                     }
                     break;
             }
-            for (int x = 0; x < 7; x++)
+            foreach (Robit x in Combatants)
             {
-                if (Combatants[x].HP < 0)
-                {
-                    Combatants[x].HP = 0;//Keeps enemies and allies from having negative HP, which may cause errors.
-                }
+                x.HP = Math.Max(x.HP, 0);//Keeps enemies and allies from having negative HP, which may cause errors.
             }
-            if (move != 7 && move != 10 && Combatants[caster].Charge>0)//Resets charge after an attack, unless charge was used. Charge can build up infinitely, but takes one turn each time.
+            if (move != 7 && move != 10 && move != 0 && Combatants[caster].Charge>0)//Resets charge after an attack, unless charge wasn't used. Charge can build up to 3, but takes one turn each time.
             {
                 Log.Add(Combatants[caster].Name + " discharged!");
                 Combatants[caster].Charge = 0;
             }
             return Log.ToArray();
+        }
+        public void RunRoundCalculations()//This will run at the end of every "Round". A round begins with Abel's turn, and ends with Enemy4's turn.
+        {
+            foreach (Robit x in Combatants)
+            {
+                if (x.StatusEffects[(int)StatusEffects.Melted] > 0)
+                    x.HP--;
+                if (x.StatusEffects[(int)StatusEffects.HPRegen] > 0)
+                    x.HP++;
+                if (x.StatusEffects[(int)StatusEffects.MPRegen] > 0)
+                    MP++;
+                for (int y = 0 ; y < x.StatusEffects.Length; y++)
+                {
+                    if (y>0)
+                    {
+                        x.StatusEffects[y]--;
+                    }
+                }    
+            }
+
         }
         public string[] Flee()
         {
@@ -298,7 +335,7 @@ namespace Robit_Game.Properties
             List<string> Tattle = new List<string> { Combatants[caster].Name + ": \"That's "  + Combatants[target].Name + ". Max HP is " + Combatants[target].MaxHP + ", Attack is " + Combatants[target].Attack + ", Defense is " + Combatants[target].Defense + ".\"" };
             for (int x = 0; x < Combatants[target].TattleLog.Length; x++)
             {
-                Tattle.Append(Combatants[caster].Name + ": \"" + Combatants[target].TattleLog[x] + "\"");
+                Tattle.Add(Combatants[caster].Name + ": \"" + Combatants[target].TattleLog[x] + "\"");
             }
             return Tattle;
         }
@@ -320,14 +357,18 @@ namespace Robit_Game.Properties
             RobitPrototypes[13] = new Robit { Name = "Hacksmith",         MaxHP = 15,  Attack = 2, Defense = 0, Level = 17, ValidAttacks = new int[] { 3, 4, 5, 7 },    TattleLog = new string[] { "Hacksmiths can be difficult to deal with.", "They have access to a day-zero database, so they always find a way to debuff you", "Try to get rid of all the hacksmiths on the battlefield before you worry about the others."} };
             RobitPrototypes[14] = new Robit { Name = "Crane Mech",        MaxHP = 30,  Attack = 2, Defense = 0, Level = 20, ValidAttacks = new int[] { 1, 6, 9 },       TattleLog = new string[] { "I never thought a magnet crane could be used as a weapon!", "When Frix charges the magnet, hold a defensive stance.", "If you let him pull you in, you could get stunned."} };
             RobitPrototypes[15] = new Robit { Name = "Sir Volk",          MaxHP = 50,  Attack = 3, Defense = 0, Level = 30, ValidAttacks = new int[] { 4, 5, 8},        TattleLog = new string[] { "Sir Volk is Smith's son and right hand.", "A jetpack, a sword, a flamethrower... What weapons does he not have?", "All of these tools give him a ton of attacking options.", "I hope we came well prepared."} };
-            for(int x=0;x<15;x++)
+            int y = 0;
+            foreach(Robit x in RobitPrototypes)
             {
-                RobitPrototypes[x].Tattled = false;
-                RobitPrototypes[x].Defending = false;
-                RobitPrototypes[x].ID = x;
-                RobitPrototypes[x].HP = RobitPrototypes[x].MaxHP;
-                RobitPrototypes[x].Charge = 0;
-                RobitPrototypes[x].Summon = 3;
+                x.Tattled = false;
+                x.Defending = false;
+                x.ID = y;
+                x.HP = x.MaxHP;
+                x.Charge = 0;
+                x.Summon = 3;
+                x.HPRegen = 0;
+                x.HPRegenDuration = 0;
+                y++;
             }
             RobitPrototypes[5].Summon = 8;
             RobitPrototypes[9].Summon = 11;
@@ -338,6 +379,8 @@ namespace Robit_Game.Properties
     {
         public int HP;
         public int MaxHP;
+        public int HPRegen;
+        public int HPRegenDuration;
         public int Attack;
         public int Defense;
         public int[] ValidAttacks;
@@ -345,16 +388,17 @@ namespace Robit_Game.Properties
         public string Name;
         public string[] TattleLog;
         public bool Tattled;
-        public int ID;
+        public int ID;//Needs to exist to tattle multiple enemies of the same type.
         public bool Defending;
         public int Charge;
         public int Summon;
+        public int[] StatusEffects = new int[10];//10 unique status effects.
         public Robit()
         {
-            ValidAttacks = new int[10];
-            for(int x=0;x<10;x++)
+            ValidAttacks = new int[20];
+            foreach (int x in ValidAttacks)
             {
-                ValidAttacks[x] = 0;
+                ValidAttacks[x] = -1;
             }
         }
     }
