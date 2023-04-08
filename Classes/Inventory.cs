@@ -58,7 +58,7 @@ namespace Robit_Game.Classes
         }
         public void InitializeBadges()
         {
-            BadgePrototypes = new Badge[20];
+            BadgePrototypes = new Badge[21];
             BadgePrototypes[0] = new OPAmplifier(Battle, this);
             BadgePrototypes[1] = new DPAmplifier(Battle, this);
             BadgePrototypes[2] = new ThickenedPlating(Battle, this);
@@ -79,6 +79,7 @@ namespace Robit_Game.Classes
             BadgePrototypes[17] = new SmallCapacitor(Battle, this);
             BadgePrototypes[18] = new DebugBadge(Battle, this);
             BadgePrototypes[19] = new ParryDatabase(Battle, this);
+            BadgePrototypes[20] = new ZeroDayDatabase(Battle, this);
         }
         public void InitializeItems()
         {
@@ -602,7 +603,7 @@ namespace Robit_Game.Classes
         {
             Name = "Debug Badge";
             Description.Add("Grants access to every ability in the game. Mostly irreversible.");
-            Description.Add("How did you find this???.");
+            Description.Add("How did you find this???");
             BPCost = 6;
             ID = 18;
         }
@@ -621,6 +622,26 @@ namespace Robit_Game.Classes
             BPCost = 3;
             ID = 19;
             BadgeEffectToChange = (int)BadgeEffects.ParryDatabase;
+        }
+    }
+    public class ZeroDayDatabase : Badge
+    {
+        public ZeroDayDatabase(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
+        {
+            Name = "Zero-Day Database";
+            Description.Add("Tattle now reveals exploits against opponents.");
+            Description.Add("Applies a defense debuff to tattle target for 2 turns.");
+            BPCost = 2;
+            ID = 20;
+            ForceEquip = (int)Characters.K813;
+        }
+        public override void Equip2(int Equipee)
+        {
+            Battle.ZeroDay = true;
+        }
+        public override void Unequip2(int Equipee)
+        {
+            Battle.ZeroDay = false;
         }
     }
 }

@@ -18,7 +18,7 @@ namespace Robit_Game
         bool AwaitingEquip = false;
         int SelectedItem = -1;
         int SelectedItemType = 2;
-        int LastEquippedBadge;
+        int LastEquippedBadge = -1;
         enum InvMode { Items, Abilities, Badges };
         enum Characters { Abel, K813, Sarge, Enemy1, Enemy2, Enemy3, Enemy4};
         enum Directions { North, East, South, West};
@@ -32,7 +32,7 @@ namespace Robit_Game
             Inventory = new Inventory(Battle);
             IsBattle = false;
             BeginBattle(new int[] {14, 3, 3, 3});
-            for (int z = 0; z < 20; z++)//DEBUG LOOP! DO NOT KEEP
+            for (int z = 0; z < 21; z++)//DEBUG LOOP! DO NOT KEEP
             {
                 Inventory.Badges.Add(Inventory.BadgePrototypes[z]);
             }
@@ -55,7 +55,7 @@ namespace Robit_Game
 
         private void InventoryBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (InventoryBox.SelectedIndex == -1)
+            if (InventoryBox.SelectedIndex == -1 || Turn > 2)
                 return;
             UpdateDescriptionBox(InventoryBox.SelectedIndex);
             SelectedItem = InventoryBox.SelectedIndex;
@@ -142,7 +142,6 @@ namespace Robit_Game
             if (IsBattle)
             {
                 Move = 1;
-                PrintStory(new string[] { "Choose a target to attack." });
             }
             else
             {
@@ -190,9 +189,7 @@ namespace Robit_Game
             {
                 //Ability!
                 AwaitingEquip = false;
-                SelectedItemType = (int)InvMode.Abilities;
                 UpdateInventory((int)InvMode.Abilities);
-                PrintStory(new string[] { "Choose an ability." });
 
             }
             else
@@ -212,20 +209,23 @@ namespace Robit_Game
         private void BadgeButton_Click(object sender, EventArgs e)
         {
             UpdateInventory((int)InvMode.Badges);
-            SelectedItemType = (int)InvMode.Badges;
         }
         private void ItemButton_Click(object sender, EventArgs e)
         {
             UpdateInventory((int)InvMode.Items);
-            SelectedItemType = (int)InvMode.Items;
         }
         private void RunPlayerTurn(int Target)
         {
-            if (Target == -1 || Move == -1 || Turn > (int) Characters.Sarge)
+            if (Turn > (int)Characters.Sarge)
+            {
+                RunEnemyTurns();
+                return;
+            }
+            if (Target == -1 || Move == -1)
             {
                 return;
             }
-            for (int x = 0; x < 2; x++)//This block of code may need to run twice, if both Abel and K-813 are dead. This will not need to be done a third time, as if this is the case, it is already game over.
+            for (int x = 0; x < 3; x++)//This block of code may need to run twice, if both Abel and K-813 are dead. This will not need to be done a third time, as if this is the case, it is already game over.
             {
                 if (Battle.Combatants[Turn].HP == 0 || Battle.Combatants[Turn].StatusEffects[(int) StatusEffects.Glitched] > 0)
                 {
@@ -262,14 +262,24 @@ namespace Robit_Game
         {
             Random RNG = new Random();
             int Target;
+            List<int> PotentialTargets = new List<int> { };
+            for(int x = (int) Characters.Abel ; x < (int) Characters.Sarge + 1; x++)
+            {
+                if (Battle.Combatants[x].HP > 0)
+                {
+                    PotentialTargets.Add(x);
+                }
+            }
+            if(PotentialTargets.Count == 0)
+            {
+                Turn = 0;
+                return;
+            }
             while (Turn < (int) Characters.Enemy4 + 1)
             {
                 if (Battle.Combatants[Turn].HP > 0)
                 {
-                    do
-                    {
-                        Target = RNG.Next((int) Characters.Abel, (int) Characters.Sarge + 1);
-                    } while (Battle.Combatants[Target].HP <= 0);
+                    Target = PotentialTargets[RNG.Next( 0, PotentialTargets.Count)];
                     Move = Battle.Combatants[Turn].ValidAttacks[RNG.Next(0, Battle.Combatants[Turn].ValidAttacks.Length)];//Picks a random attack from the list of attacks.
                     PrintStory(Battle.RunTurn(Move, Turn, Target));
                     UpdateBattle();
@@ -286,6 +296,8 @@ namespace Robit_Game
             {
                 Turn++;
             }
+            if (Turn > 2)
+                RunEnemyTurns();
         }
         private void PrintStory(string[] phrases)
         {
@@ -296,6 +308,12 @@ namespace Robit_Game
         }
         private void UpdateInventory(int InvMode)
         {
+            if (InvMode != SelectedItemType)
+            {
+                SelectedItem = -1;
+            }
+            Move = -1;
+            SelectedItemType = InvMode;
             string[] Items = Inventory.GetInventory(InvMode, Turn);
             InventoryBox.Items.Clear();
             for (int x = 0 ; x <  Items.Length ; x++)
@@ -471,7 +489,7 @@ namespace Robit_Game
             {
                 UpdateDescriptionBox(LastEquippedBadge);
             }
-            if (Move >= 0)
+            if (Move >= 0 && SelectedItem > -1)
             {
                 if (Battle.Combatants[Turn].BadgeEffects[(int)BadgeEffects.MatterAnnihilator] < 1)
                 {

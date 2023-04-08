@@ -15,7 +15,7 @@ namespace Robit_Game.Properties
         public int MP;
         public int MaxMP;
         public int EXP;
-        public int ZeroDay;
+        public bool ZeroDay;
         public int MPRegen = 0;
         public enum Moves { Defend, BasicAttack, Tattle, Reconstruct, HeatWave, Torch, Magneto, Charge, BlazingCombo, LightningCombo, HardCharge, Summon };
         public enum StatusEffects { Glitched, Melted, Rusted, ExtraTurn, HPRegen, AtkBonus, AtkPenalty, DefBonus, DefPenalty};
@@ -73,7 +73,7 @@ namespace Robit_Game.Properties
             {
                 if (Combatants[x].Tattled)
                 {
-                    HPs[x] = Combatants[x].HP;
+                    HPs[x] = Math.Min(Combatants[x].HP, Combatants[x].MaxHP);
                 }
                 else
                 {
@@ -116,6 +116,7 @@ namespace Robit_Game.Properties
         }
         public string[] RunTurn(int move, int caster, int target)//returns strings to be printed to the LoreBox.
         {
+            Combatants[caster].Defending = false;//Defending buff wears off after every other character moves once.
             List<string> Log = new List<string> { "" };//temporary assignment so the log is at least one string long.
             int Damage = Combatants[caster].Attack + Combatants[caster].Charge;//Tinker with this line for badges
             int Defense = Combatants[target].Defense;
@@ -224,7 +225,7 @@ namespace Robit_Game.Properties
                         {
                             Damage -= Defense;
                             Combatants[x].HP -= Damage;
-                            Log.Add(Combatants[x].Name + " was magnetized for " + Damage);
+                            Log.Add(Combatants[x].Name + " was magnetized for " + Damage + " damage.");
                             if (RNG.Next(1, 100) > 50)//50% change to inflict glitched
                             {
                                 Combatants[x].StatusEffects[(int)StatusEffects.Glitched] += 1;
@@ -321,16 +322,16 @@ namespace Robit_Game.Properties
                     x.HP++;
                 if (x.BadgeEffects[(int)BadgeEffects.AdaptiveControlUnit] > 0)
                 {
-                    for (int y = 0; y < x.StatusEffects.Length; y++)
+                    for (int y = 0; y < 9; y++)
                     {
                         x.StatusEffects[y] = 0;
                     }
                 }
                 else
                 {
-                    for (int y = 0; y < x.StatusEffects.Length; y++)
+                    for (int y = 0; y < 9; y++)
                     {
-                        if (y > 0)
+                        if (x.StatusEffects[y] > 0)
                         {
                             x.StatusEffects[y]--;
                         }
@@ -364,14 +365,16 @@ namespace Robit_Game.Properties
         }
         public string[] EndBattle()
         {
-            string[] log = new string[] { "We did it! All enemies defeated." };
+            List<string> log = new List<string> { "We did it! All enemies defeated." };
             int CalculatedEXP = 0;
             for (int x = 3; x < 7; x++)
             {
                 CalculatedEXP += Math.Max(Math.Min(Combatants[x].Level - Combatants[0].Level, 25), 0);//The Max function prevents the player from loosing EXP from fighting weak enemies. The Min function keeps the player from gaining more than 100 EXP in one fight, preventing the player from leveling up twice from the same fight.
             }
-            EXP += Math.Max(CalculatedEXP, 1);//Fights will always yield at least 1 EXP.
-            return log;
+            Math.Max(CalculatedEXP, 1);//Fights will always yield at least 1 EXP.
+            log.Add($"{CalculatedEXP} Earned! Current EXP: {EXP%100}/100");
+            EXP += CalculatedEXP; 
+            return log.ToArray();
         }
         public void GameOver()
         {
@@ -385,6 +388,10 @@ namespace Robit_Game.Properties
                 {
                     Combatants[x].Tattled = true;//Marks all 4 potential enemies on the battlefield of the same type as tattled
                 }
+            }
+            if (ZeroDay && Combatants[target].ID > 2)//If target is not an ally,
+            {
+                Combatants[target].StatusEffects[(int)StatusEffects.DefPenalty] = 2;
             }
             RobitPrototypes[target].Tattled = true;//Marks the enemy prototype as tattled, so that when they are encountered again, they do not need to be tattled again.
             List<string> Tattle = new List<string> { Combatants[caster].Name + ": \"That's "  + Combatants[target].Name + ". Max HP is " + Combatants[target].MaxHP + ", Attack is " + Combatants[target].Attack + ", Defense is " + Combatants[target].Defense + ".\"" };
@@ -444,7 +451,7 @@ namespace Robit_Game.Properties
         public bool Defending;
         public int Charge;
         public int Summon;
-        public int[] StatusEffects = new int[9];//10 unique status effects.
+        public int[] StatusEffects = new int[9];//9 unique status effects.
         public int[] BadgeEffects = new int[12];//12 unique badge effects.
         public Robit()
         {
