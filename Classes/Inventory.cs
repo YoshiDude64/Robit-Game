@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -23,7 +24,8 @@ namespace Robit_Game.Classes
         readonly Dictionary <int, string> CharacterNames = new Dictionary <int, string>();
         public string LastItemUsed;
         int InvType = 0;
-        enum InvMode { Items, Abilities, Badges }
+        enum InvMode { Items, Abilities, Badges };
+        public enum BadgeEffects { Buggernaut, MachineDatabase, Nanomachines, AdaptiveControlUnit, MatterAnnihilator, EmergencyOffenseReserve, EmergencyDefenseReserve, InductionCoil, MinimalistArchetecture, CapacitorSize, ItemAutoLoader, ParryDatabase };
         public Inventory(Battle NewBattle)
         {
             Battle = NewBattle;
@@ -36,6 +38,7 @@ namespace Robit_Game.Classes
             CharacterNames.Add( 0, "Abel" );
             CharacterNames.Add( 1, "K-813" );
             CharacterNames.Add( 2, "Sarge" );
+            CharacterNames.Add( 3, "All");
         }
         public void InitializeAbilities()
         {
@@ -55,13 +58,27 @@ namespace Robit_Game.Classes
         }
         public void InitializeBadges()
         {
-            BadgePrototypes = new Badge[20];//Do not use these. This is just so that the lookup table has valid space for writing actual badges.
+            BadgePrototypes = new Badge[20];
             BadgePrototypes[0] = new OPAmplifier(Battle, this);
             BadgePrototypes[1] = new DPAmplifier(Battle, this);
             BadgePrototypes[2] = new ThickenedPlating(Battle, this);
             BadgePrototypes[3] = new BackupBattery(Battle, this);
             BadgePrototypes[4] = new OPDiverter(Battle, this);
             BadgePrototypes[5] = new DPDiverter(Battle, this);
+            BadgePrototypes[6] = new Buggernaut(Battle, this);
+            BadgePrototypes[7] = new MachineDatabase(Battle, this);
+            BadgePrototypes[8] = new Nanomachines(Battle, this);
+            BadgePrototypes[9] = new FissionReactor(Battle, this);
+            BadgePrototypes[10] = new AdaptiveControlUnit(Battle, this);
+            BadgePrototypes[11] = new MatterAnnihilator(Battle, this);
+            BadgePrototypes[12] = new EmergencyOffenceReserve(Battle, this);
+            BadgePrototypes[13] = new EmergencyDefenseReserve(Battle, this);
+            BadgePrototypes[14] = new InductionCoil(Battle, this);
+            BadgePrototypes[15] = new MinimalistArchetecture(Battle, this);
+            BadgePrototypes[16] = new LargeCapacitor(Battle, this);
+            BadgePrototypes[17] = new SmallCapacitor(Battle, this);
+            BadgePrototypes[18] = new DebugBadge(Battle, this);
+            BadgePrototypes[19] = new ParryDatabase(Battle, this);
         }
         public void InitializeItems()
         {
@@ -92,9 +109,19 @@ namespace Robit_Game.Classes
                     break;
                 case (int)InvMode.Abilities:
                     Array.Sort(Battle.Combatants[Turn].ValidAttacks);
-                    for (int x = 0; x < Battle.Combatants[Turn].ValidAttacks.Length; x++)
+                    if (Battle.Combatants[Turn].BadgeEffects[(int)BadgeEffects.MatterAnnihilator] < 1)
                     {
-                        Entries.Add($"{Abilities[Battle.Combatants[Turn].ValidAttacks[x]].Name} - {Abilities[Battle.Combatants[Turn].ValidAttacks[x]].MPCost} MP");//FIX LATER
+                        for (int x = 0; x < Battle.Combatants[Turn].ValidAttacks.Length; x++)
+                        {
+                            Entries.Add($"{Abilities[Battle.Combatants[Turn].ValidAttacks[x]].Name} - {Abilities[Battle.Combatants[Turn].ValidAttacks[x]].MPCost + Battle.Combatants[Turn].BadgeEffects[(int)BadgeEffects.CapacitorSize]} MP");//FIX LATER
+                        }
+                    }
+                    else
+                    {
+                        for (int x = 0; x < Battle.Combatants[Turn].ValidAttacks.Length; x++)
+                        {
+                            Entries.Add($"{Abilities[Battle.Combatants[Turn].ValidAttacks[x]].Name} - {Abilities[Battle.Combatants[Turn].ValidAttacks[x]].MPCost + Battle.Combatants[Turn].BadgeEffects[(int)BadgeEffects.CapacitorSize]} HP");//FIX LATER
+                        }
                     }
                     break;
                 case (int)InvMode.Badges:
@@ -211,15 +238,18 @@ namespace Robit_Game.Classes
     }
     public class Badge
     {
-        public enum Characters { Any = -1, Abel = 0, K = 1, Sarge = 2};
-
+        public enum Characters { Any = -1, Abel = 0, K813 = 1, Sarge = 2, All = 3 };
+        public enum BadgeEffects { Buggernaut, MachineDatabase, Nanomachines, AdaptiveControlUnit, MatterAnnihilator, EmergencyOffenseReserve, EmergencyDefenseReserve, InductionCoil, MinimalistArchetecture, CapacitorSize, ItemAutoLoader, ParryDatabase };
+        public int BadgeEffectToChange = -1;
         public int EquippedToCharacter = -1;
+        public int ForceEquip = -1;
         public string Name = string.Empty;
         public List<string> Description = new List<string> { };
         public int BPCost;
         public Battle Battle;
         public Inventory Inventory;
         public int ID;
+        public bool TeamBadge;
         public Badge(Battle NewBattle, Inventory BadgeInventory)
         {
             Battle = NewBattle;
@@ -227,22 +257,32 @@ namespace Robit_Game.Classes
         }
         public bool Equip(int Equipee)//Successful equip? T/F.
         {
-            if (EquippedToCharacter >= 0)
+            if (ForceEquip == -1 || ForceEquip == Equipee)
             {
-                Unequip();
-            }
-            if(BPCost<=Inventory.BP)
-            {
-                Inventory.BP -= BPCost;
-                EquippedToCharacter = Equipee;
-                Equip2(Equipee);
-                return true;
+                if (TeamBadge)
+                {
+                    Equipee = 3;
+                }
+                if (EquippedToCharacter >= 0)
+                {
+                    Unequip();
+                }
+                if (BPCost <= Inventory.BP)
+                {
+                    Inventory.BP -= BPCost;
+                    EquippedToCharacter = Equipee;
+                    Equip2(Equipee);
+                    return true;
+                }
             }
             return false;
         }
         public virtual void Equip2(int Equipee)
         {
-            //Should do nothing. If this ever runs, error!
+            if (BadgeEffectToChange >= 0)
+            {
+                Battle.Combatants[EquippedToCharacter].BadgeEffects[BadgeEffectToChange] += 1;
+            }//Otherwise, Error!
         }
         public void Unequip()
         {
@@ -251,8 +291,11 @@ namespace Robit_Game.Classes
             EquippedToCharacter = -1;
         }
         public virtual void Unequip2(int Equipee) 
-        { 
-            //Should do nothing. If this ever runs, error!
+        {
+            if (BadgeEffectToChange >= 0)
+            {
+                Battle.Combatants[EquippedToCharacter].BadgeEffects[BadgeEffectToChange] -= 1;
+            }//Otherwise, Error!
         }
     }
     public class OPAmplifier : Badge
@@ -377,6 +420,207 @@ namespace Robit_Game.Classes
             Description.Add("Gain an INSANE amount of defense while under the glitched status effect.");
             BPCost = 2;
             ID = 6;
+            BadgeEffectToChange = (int) BadgeEffects.Buggernaut;
+        }
+    }
+    public class MachineDatabase : Badge
+    {
+        public MachineDatabase(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory) 
+        {
+            Name = "Machine Database";
+            Description.Add("Automatically reveals enemy health bars at the start of a battle");
+            Description.Add("if they haven't been tattled yet. (K-813 only)");
+            BPCost = 1;
+            ID = 7;
+            ForceEquip = (int) Characters.K813;
+        }
+        public override void Equip2(int Equipee)
+        {
+            Battle.AutoTattle = true;
+        }
+        public override void Unequip2(int Equipee)
+        {
+            Battle.AutoTattle = false;
+        }
+    }
+    public class Nanomachines : Badge
+    {
+        public Nanomachines(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
+        {
+            Name = "Nanomachines";
+            Description.Add("Repairs a robot for 2HP at the end of every turn.");
+            BPCost = 2;
+            ID = 8;
+            BadgeEffectToChange = (int)BadgeEffects.Nanomachines;
+        }
+    }
+    public class FissionReactor : Badge
+    {
+        public FissionReactor(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory) 
+        {
+            Name = "Fission Reactor";
+            Description.Add("Generates 1 MP every turn for free.");
+            BPCost = 3;
+            ID = 9;
+            TeamBadge = true;
+        }
+        public override void Equip2(int Equipee)
+        {
+            Battle.MPRegen++;
+        }
+        public override void Unequip2(int Equipee)
+        {
+            Battle.MPRegen--;
+        }
+    }
+    public class AdaptiveControlUnit : Badge
+    {
+        public AdaptiveControlUnit(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory) 
+        {
+            Name = "Adaptive Control Unit";
+            Description.Add("Recover from all status effects at the end of every turn.");
+            Description.Add("(Applies to ALL status effects, good or bad)");
+            BPCost = 3;
+            ID = 10;
+            BadgeEffectToChange = (int)BadgeEffects.AdaptiveControlUnit;
+        }
+    }
+    public class MatterAnnihilator : Badge
+    {
+        public MatterAnnihilator(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
+        {
+            Name = "Matter Annihilator";
+            Description.Add("Annihilates matter into pure energy.");
+            Description.Add("Abilities cost HP instead of MP");
+            BPCost = 1;
+            ID = 11;
+            BadgeEffectToChange = (int)BadgeEffects.MatterAnnihilator;
+        }
+    }
+    public class EmergencyOffenceReserve : Badge
+    {
+        public EmergencyOffenceReserve(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory) 
+        {
+            Name = "Emergency Offence Reserve";
+            Description.Add("Increases attack by one when under 20% HP.");
+            BPCost = 1;
+            ID = 12;
+        }
+        public override void Equip2(int Equipee)
+        {
+            Battle.Combatants[EquippedToCharacter].BadgeEffects[(int)BadgeEffects.EmergencyOffenseReserve] += 1;
+        }
+        public override void Unequip2(int Equipee)
+        {
+            Battle.Combatants[EquippedToCharacter].BadgeEffects[(int)BadgeEffects.EmergencyOffenseReserve] -= 1;
+        }
+    }
+    public class EmergencyDefenseReserve : Badge
+    {
+        public EmergencyDefenseReserve(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
+        {
+            Name = "Emergency Defense Reserve";
+            Description.Add("Increases defense by one when under 20% HP.");
+            BPCost = 1;
+            ID = 13;
+            BadgeEffectToChange = (int)BadgeEffects.EmergencyDefenseReserve;
+        }
+    }
+    public class InductionCoil : Badge
+    {
+        public InductionCoil(Battle NewBattle, Inventory BadgeInventory) : base (NewBattle, BadgeInventory)
+        {
+            Name = "Induction Coil";
+            Description.Add("Applies the melting effect for 2 turns to each target");
+            BPCost = 1;
+            ID = 14;
+            BadgeEffectToChange = (int)BadgeEffects.InductionCoil;
+        }
+    }
+    public class MinimalistArchetecture : Badge
+    {
+        public MinimalistArchetecture(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
+        {
+            Name = "Minimalist Archetecture";
+            Description.Add("Removes all moves except basic attack. Basic attack deals +1 damage.");
+            Description.Add("Special attacks? That's bloat. Cut it out.");
+            BPCost = 1;
+            ID = 15;
+            BadgeEffectToChange = (int)BadgeEffects.MinimalistArchetecture;
+        }
+        public override void Equip2(int Equipee)
+        {
+            if (Battle.Combatants[Equipee].AllAttacks.Length == 0)
+            {
+                Battle.Combatants[Equipee].AllAttacks = Battle.Combatants[Equipee].ValidAttacks;
+                Battle.Combatants[Equipee].ValidAttacks = new int[] { 0, 1 };//Only attack and defend.
+            }
+        }
+        public override void Unequip2(int Equipee)
+        {
+            if (Battle.Combatants[Equipee].AllAttacks.Length != 0)
+            {
+                Battle.Combatants[Equipee].ValidAttacks = Battle.Combatants[Equipee].AllAttacks;
+                Battle.Combatants[Equipee].AllAttacks = new int[] { };
+            }
+        }
+    }
+    public class LargeCapacitor : Badge
+    {
+        public LargeCapacitor(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
+        {
+            Name = "Large Capacitor";
+            Description.Add("Takes more energy to charge, but unleashes greater power");
+            Description.Add("All attacks cost +1 MP, but they all deal +1 damage.");
+            BPCost = 4;
+            ID = 16;
+            BadgeEffectToChange = (int)BadgeEffects.CapacitorSize;
+        }
+    }
+    public class SmallCapacitor : Badge
+    {
+        public SmallCapacitor(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
+        {
+            Name = "Small Capacitor";
+            Description.Add("Takes less energy to charge, but unleashes less power");
+            Description.Add("All attacks cost -1 MP, but they all deal -1 damage.");
+            BPCost = 2;
+            ID = 17;
+        }
+        public override void Equip2(int Equipee)
+        {
+            Battle.Combatants[EquippedToCharacter].BadgeEffects[(int)BadgeEffects.CapacitorSize] -= 1;
+        }
+        public override void Unequip2(int Equipee)
+        {
+            Battle.Combatants[EquippedToCharacter].BadgeEffects[(int)BadgeEffects.CapacitorSize] += 1;
+        }
+    }
+    public class DebugBadge : Badge
+    {
+        public DebugBadge(Battle NewBattle, Inventory BadgeInventory) : base(NewBattle, BadgeInventory)
+        {
+            Name = "Debug Badge";
+            Description.Add("Grants access to every ability in the game. Mostly irreversible.");
+            Description.Add("How did you find this???.");
+            BPCost = 6;
+            ID = 18;
+        }
+        public override void Equip2(int Equipee)
+        {
+                Battle.Combatants[Equipee].ValidAttacks = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+        }
+    }
+    public class ParryDatabase : Badge
+    {
+        public ParryDatabase(Battle NewBattle, Inventory BadgeInventory) : base (NewBattle, BadgeInventory)
+        {
+            Name = "Parry Database";
+            Description.Add("When hit, deals one damage to the attacker.");
+            Description.Add("It's just 10,000 hours of swordfighting videos.");
+            BPCost = 3;
+            ID = 19;
+            BadgeEffectToChange = (int)BadgeEffects.ParryDatabase;
         }
     }
 }

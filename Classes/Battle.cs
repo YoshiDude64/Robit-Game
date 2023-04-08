@@ -16,8 +16,13 @@ namespace Robit_Game.Properties
         public int MaxMP;
         public int EXP;
         public int ZeroDay;
+        public int MPRegen = 0;
         public enum Moves { Defend, BasicAttack, Tattle, Reconstruct, HeatWave, Torch, Magneto, Charge, BlazingCombo, LightningCombo, HardCharge, Summon };
-        public enum StatusEffects { Glitched, Melted, Rusted, ExtraTurn, HPRegen, MPRegen, AtkBonus, AtkPenalty, DefBonus, DefPenalty};
+        public enum StatusEffects { Glitched, Melted, Rusted, ExtraTurn, HPRegen, AtkBonus, AtkPenalty, DefBonus, DefPenalty};
+        public enum BadgeEffects { Buggernaut, MachineDatabase, Nanomachines, AdaptiveControlUnit, MatterAnnihilator, EmergencyOffenseReserve, EmergencyDefenseReserve, InductionCoil, MinimalistArchetecture, CapacitorSize, ItemAutoLoader, ParryDatabase };
+        readonly List<int> OffensiveAbilities = new List<int> { (int)Moves.BasicAttack, (int)Moves.HeatWave, (int)Moves.Torch, (int)Moves.Magneto, (int)Moves.BlazingCombo, (int)Moves.LightningCombo };
+        readonly List<int> GroupAbilities = new List<int> { (int)Moves.HeatWave, (int)Moves.Magneto };
+        public bool AutoTattle = false;
         public Battle()
         {
             Combatants = new Robit[7];
@@ -113,34 +118,64 @@ namespace Robit_Game.Properties
         {
             List<string> Log = new List<string> { "" };//temporary assignment so the log is at least one string long.
             int Damage = Combatants[caster].Attack + Combatants[caster].Charge;//Tinker with this line for badges
-            int Defense = Combatants[caster].Defense;
+            int Defense = Combatants[target].Defense;
             int start, stop;
             string TargetTeam;
             Random RNG = new Random();
             if (Combatants[target].StatusEffects[(int)StatusEffects.DefPenalty] > 0)
-                Defense--;
-            if (Combatants[target].StatusEffects[(int)StatusEffects.DefBonus] > 0)
-                Defense++;
-            if (Combatants[caster].StatusEffects[(int)StatusEffects.AtkPenalty] > 0)
-                Damage--;
-            if (Combatants[caster].StatusEffects[(int)StatusEffects.AtkPenalty] > 0)
-                Damage++;
-            foreach (Robit x in Combatants)
             {
-                x.Defense = Math.Max(x.Defense, 0);//Cannot have negative defense.
-            }
-            if (target >= 3)//Sets up group attack iterators for attacks against enemies.
+                Defense--;
+            }//Defense penalty? Lower defense.
+            if (Combatants[target].StatusEffects[(int)StatusEffects.DefBonus] > 0)
+            {
+                Defense++;
+            }//Defense bonus? Boost defense.
+            if (Combatants[caster].StatusEffects[(int)StatusEffects.AtkPenalty] > 0)
+            {
+                Damage--;
+            }//Atk Penalty? Lower damage.
+            if (Combatants[caster].StatusEffects[(int)StatusEffects.AtkBonus] > 0)
+            {
+                Damage++;
+            }//Atk bonus? Boost damage.
+            if (Combatants[target].StatusEffects[(int)StatusEffects.Glitched] > 0)
+            {
+                Defense += Combatants[target].BadgeEffects[(int)BadgeEffects.Buggernaut] * 10;
+            }//Glitched? Activate buggernaut.
+            if ((Combatants[caster].HP * 100) / Combatants[caster].MaxHP <= 20)
+            {
+                Damage += Combatants[caster].BadgeEffects[(int)BadgeEffects.EmergencyOffenseReserve];
+            }//In danger? Increase attack by danger badge.
+            if ((Combatants[target].HP * 100) / Combatants[caster].MaxHP <= 20)
+            {
+                Defense += Combatants[caster].BadgeEffects[(int)BadgeEffects.EmergencyDefenseReserve];
+            }//In danger? Increase defense by danger badge.
+            if (target >= 3)
             {
                 TargetTeam = "enemies";
                 start = 3;
                 stop = 7;
-            }
-            else//Sets up group attack iterators for attacks against allies.
+            }//Sets up group attack iterators for attacks against enemies.
+            else
             {
                 TargetTeam = "allies";
                 start = 0;
                 stop = 3;
-            }
+            }//Sets up group attack iterators for attacks against allies.
+            if(OffensiveAbilities.Contains(move))
+            {
+                if(GroupAbilities.Contains(move))
+                {
+                    for(int x = start; x < stop; x++)
+                    {
+                        Combatants[x].StatusEffects[(int)StatusEffects.Melted] += 2 * Combatants[caster].BadgeEffects[(int)BadgeEffects.InductionCoil];
+                    }
+                }
+                else
+                {
+                    Combatants[target].StatusEffects[(int)StatusEffects.Melted] += 2 * Combatants[caster].BadgeEffects[(int)BadgeEffects.InductionCoil];
+                }
+            }//Apply general status effects.
             switch (move)
             {
                 case (int)Moves.Defend://Defend
@@ -248,6 +283,8 @@ namespace Robit_Game.Properties
                             {
                                 Combatants[x] = RobitPrototypes[Combatants[caster].Summon];
                                 Log.Add(Combatants[x].Name + "appeared!");
+                                if (AutoTattle)
+                                    Combatants[x].Tattled = true;
                                 break;
                             }
                         }
@@ -267,6 +304,11 @@ namespace Robit_Game.Properties
                 Log.Add(Combatants[caster].Name + " discharged!");
                 Combatants[caster].Charge = 0;
             }
+            if (Combatants[target].BadgeEffects[(int)BadgeEffects.ParryDatabase] > 0 && Combatants[target].HP > 0 && OffensiveAbilities.Contains(move))
+            {
+                Combatants[caster].HP -= Combatants[target].BadgeEffects[(int)BadgeEffects.ParryDatabase];
+                Log.Add($"{Combatants[target]} parried the attack for {Combatants[target].BadgeEffects[(int)BadgeEffects.ParryDatabase]} damage!");
+            }
             return Log.ToArray();
         }
         public void RunRoundCalculations()//This will run at the end of every "Round". A round begins with Abel's turn, and ends with Enemy4's turn.
@@ -277,17 +319,26 @@ namespace Robit_Game.Properties
                     x.HP--;
                 if (x.StatusEffects[(int)StatusEffects.HPRegen] > 0)
                     x.HP++;
-                if (x.StatusEffects[(int)StatusEffects.MPRegen] > 0)
-                    MP++;
-                for (int y = 0 ; y < x.StatusEffects.Length; y++)
+                if (x.BadgeEffects[(int)BadgeEffects.AdaptiveControlUnit] > 0)
                 {
-                    if (y>0)
+                    for (int y = 0; y < x.StatusEffects.Length; y++)
                     {
-                        x.StatusEffects[y]--;
+                        x.StatusEffects[y] = 0;
                     }
-                }    
+                }
+                else
+                {
+                    for (int y = 0; y < x.StatusEffects.Length; y++)
+                    {
+                        if (y > 0)
+                        {
+                            x.StatusEffects[y]--;
+                        }
+                    }
+                }
+                x.HP += x.BadgeEffects[(int)BadgeEffects.Nanomachines] * 2;
             }
-
+            MP += MPRegen;
         }
         public string[] Flee()
         {
@@ -304,6 +355,10 @@ namespace Robit_Game.Properties
             for(int x=0;x<4;x++)
             {
                 Combatants[x + 3] = RobitPrototypes[EnemyIDs[x]];
+                if(AutoTattle)
+                {
+                    Combatants[x + 3].Tattled= true;
+                }    
             }
             return Log;
         }
@@ -366,8 +421,6 @@ namespace Robit_Game.Properties
                 x.HP = x.MaxHP;
                 x.Charge = 0;
                 x.Summon = 3;
-                x.HPRegen = 0;
-                x.HPRegenDuration = 0;
                 y++;
             }
             RobitPrototypes[5].Summon = 8;
@@ -379,11 +432,10 @@ namespace Robit_Game.Properties
     {
         public int HP;
         public int MaxHP;
-        public int HPRegen;
-        public int HPRegenDuration;
         public int Attack;
         public int Defense;
         public int[] ValidAttacks;
+        public int[] AllAttacks;//Stores all valid attacks. Needed for minimalist archetecture's code.
         public int Level;
         public string Name;
         public string[] TattleLog;
@@ -392,7 +444,8 @@ namespace Robit_Game.Properties
         public bool Defending;
         public int Charge;
         public int Summon;
-        public int[] StatusEffects = new int[10];//10 unique status effects.
+        public int[] StatusEffects = new int[9];//10 unique status effects.
+        public int[] BadgeEffects = new int[12];//12 unique badge effects.
         public Robit()
         {
             ValidAttacks = new int[20];

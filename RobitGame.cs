@@ -22,7 +22,8 @@ namespace Robit_Game
         enum InvMode { Items, Abilities, Badges };
         enum Characters { Abel, K813, Sarge, Enemy1, Enemy2, Enemy3, Enemy4};
         enum Directions { North, East, South, West};
-        public enum StatusEffects { Glitched, Melted, Rusted, ExtraTurn, HPRegen, MPRegen, AtkBonus, AtkPenalty, DefBonus, DefPenalty };
+        public enum StatusEffects { Glitched, Melted, Rusted, ExtraTurn, HPRegen, AtkBonus, AtkPenalty, DefBonus, DefPenalty };
+        public enum BadgeEffects { Buggernaut, MachineDatabase, Nanomachines, AdaptiveControlUnit, MatterAnnihilator, EmergencyOffenseReserve, EmergencyDefenseReserve, InductionCoil, MinimalistArchetecture, CapacitorSize, ItemAutoLoader, ParryDatabase };
         public RobitGame()
         {
             InitializeComponent();
@@ -31,7 +32,7 @@ namespace Robit_Game
             Inventory = new Inventory(Battle);
             IsBattle = false;
             BeginBattle(new int[] {14, 3, 3, 3});
-            for (int z = 0; z < 6; z++)//DEBUG LOOP! DO NOT KEEP
+            for (int z = 0; z < 20; z++)//DEBUG LOOP! DO NOT KEEP
             {
                 Inventory.Badges.Add(Inventory.BadgePrototypes[z]);
             }
@@ -63,7 +64,11 @@ namespace Robit_Game
             else
             {
                 Move = Battle.Combatants[Turn].ValidAttacks[SelectedItem];
-                if(Battle.MP < Inventory.Abilities[Battle.Combatants[Turn].ValidAttacks[SelectedItem]].MPCost)
+                if(Battle.MP < Inventory.Abilities[Battle.Combatants[Turn].ValidAttacks[SelectedItem]].MPCost + Battle.Combatants[Turn].BadgeEffects[(int)BadgeEffects.CapacitorSize] && Battle.Combatants[Turn].BadgeEffects[(int)BadgeEffects.MatterAnnihilator] < 1)
+                {
+                    Move = -1;
+                }
+                if (Battle.Combatants[Turn].HP <= Inventory.Abilities[Battle.Combatants[Turn].ValidAttacks[SelectedItem]].MPCost + Battle.Combatants[Turn].BadgeEffects[(int)BadgeEffects.CapacitorSize] && Battle.Combatants[Turn].BadgeEffects[(int)BadgeEffects.MatterAnnihilator] > 0)
                 {
                     Move = -1;
                 }
@@ -184,9 +189,11 @@ namespace Robit_Game
             if (IsBattle)
             {
                 //Ability!
+                AwaitingEquip = false;
+                SelectedItemType = (int)InvMode.Abilities;
                 UpdateInventory((int)InvMode.Abilities);
                 PrintStory(new string[] { "Choose an ability." });
-                SelectedItemType = (int)InvMode.Abilities;
+
             }
             else
             {
@@ -466,9 +473,19 @@ namespace Robit_Game
             }
             if (Move >= 0)
             {
-                if (SelectedItemType == (int)InvMode.Abilities && Battle.MP >= Inventory.Abilities[Move].MPCost)
+                if (Battle.Combatants[Turn].BadgeEffects[(int)BadgeEffects.MatterAnnihilator] < 1)
                 {
-                    Battle.MP -= Inventory.Abilities[SelectedItem].MPCost;
+                    if (SelectedItemType == (int)InvMode.Abilities && Battle.MP >= Inventory.Abilities[Move].MPCost + Battle.Combatants[Turn].BadgeEffects[(int)BadgeEffects.CapacitorSize])
+                    {
+                        Battle.MP -= Inventory.Abilities[SelectedItem].MPCost + Battle.Combatants[Turn].BadgeEffects[(int)BadgeEffects.CapacitorSize];
+                    }
+                }
+                else
+                {
+                    if (SelectedItemType == (int)InvMode.Abilities && Battle.Combatants[Turn].HP > Inventory.Abilities[Move].MPCost + Battle.Combatants[Turn].BadgeEffects[(int)BadgeEffects.CapacitorSize])
+                    {
+                        Battle.Combatants[Turn].HP -= Inventory.Abilities[SelectedItem].MPCost + Battle.Combatants[Turn].BadgeEffects[(int)BadgeEffects.CapacitorSize];
+                    }
                 }
             }
             InventoryBox.ClearSelected();
